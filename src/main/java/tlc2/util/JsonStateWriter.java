@@ -3,6 +3,7 @@ package tlc2.util;
 import com.alibaba.fastjson2.JSONWriter;
 import org.eclipse.collections.api.list.ImmutableList;
 import org.eclipse.collections.impl.list.primitive.IntInterval;
+import tla2sany.semantic.SemanticNode;
 import tla2sany.st.Location;
 import tlc2.TLCGlobals;
 import tlc2.diploma.graph.ConcreteAction;
@@ -148,26 +149,31 @@ public class JsonStateWriter implements IStateWriter {
 
     @Override
     public void writeState(TLCState state, TLCState successor, short stateFlags, Action action) {
-        writeState(state, successor, 0, 0, stateFlags, Visualization.DEFAULT, action);
+        writeState(state, successor, 0, 0, stateFlags, Visualization.DEFAULT, action, null);
+    }
+
+    @Override
+    public void writeState(TLCState state, TLCState successor, short stateFlags, Action action, SemanticNode pred) {
+        writeState(state, successor, 0, 0, stateFlags, Visualization.DEFAULT, action, pred);
     }
 
     @Override
     public void writeState(TLCState state, TLCState successor, short stateFlags, Visualization visualization) {
-        writeState(state, successor, 0, 0, stateFlags, visualization, null);
+        writeState(state, successor, 0, 0, stateFlags, visualization, null, null);
     }
 
     @Override
     public void writeState(TLCState state, TLCState successor, BitVector actionChecks, int from, int length, short stateFlags) {
-        writeState(state, successor, from, length, stateFlags, Visualization.DEFAULT, null);
+        writeState(state, successor, from, length, stateFlags, Visualization.DEFAULT, null, null);
     }
 
     @Override
     public void writeState(TLCState state, TLCState successor, BitVector actionChecks, int from, int length, short stateFlags, Visualization visualization) {
-        writeState(state, successor, from, length, stateFlags, visualization, null);
+        writeState(state, successor, from, length, stateFlags, visualization, null, null);
     }
 
     private void writeState(TLCState state, TLCState successor, int ignoredFrom, int ignoredLength,
-                            short stateFlags, Visualization visualization, Action action) {
+                            short stateFlags, Visualization visualization, Action action, SemanticNode pred) {
         if (visualization == Visualization.STUTTERING) {
             return;
         }
