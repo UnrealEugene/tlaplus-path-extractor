@@ -99,8 +99,7 @@ public class JsonStateWriter implements IStateWriter {
             jsonWriter.writeName(Integer.toString(index));
             jsonWriter.writeColon();
             jsonWriter.startArray();
-            int actionId = this.locToId.get(concreteAction.getDeclaration());
-            jsonWriter.writeInt32(actionId);
+            jsonWriter.writeString(concreteAction.getName());
             for (IValue val : concreteAction.getArgs()) {
                 jsonWriter.writeComma();
                 jsonWriter.writeAny(FastJsonSerializer.serialize(val));
@@ -109,35 +108,8 @@ public class JsonStateWriter implements IStateWriter {
         });
     }
 
-    private void tryInitLocToId() {
-        if (!this.locToId.isEmpty()) {
-            return;
-        }
-
-        Tool tool = (Tool) TLCGlobals.mainChecker.tool;
-        List<Location> actionLocations = Arrays.stream(tool.getActions())
-                .map(Action::getDeclaration)
-                .distinct()
-                .collect(Collectors.toList());
-        this.locToId.putAll(IntStream.range(0, actionLocations.size())
-                .boxed()
-                .collect(Collectors.toMap(actionLocations::get, Function.identity())));
-
-        Map<Location, UniqueString> actionNames = Arrays.stream(tool.getActions())
-                .collect(Collectors.groupingBy(Action::getDeclaration,
-                        Collectors.reducing(null, Action::getName, (x, y) -> x == null ? y : x)));
-        Map<Location, Long> actionLocCount = Arrays.stream(tool.getActions())
-                .collect(Collectors.groupingBy(Action::getDeclaration, Collectors.counting()));
-
-        MP.printMessage(EC.GENERAL, "Found " + tool.getActions().length + " actions (" + actionLocations.size() + " distinct):");
-        for (Location loc : actionLocations) {
-            MP.printMessage(EC.GENERAL, "  " + actionNames.get(loc) + ": " + actionLocCount.get(loc));
-        }
-    }
-
     @Override
     public void writeState(TLCState state) {
-        tryInitLocToId();
         int id = this.stateGraphPathExtractor.addState(state);
         this.writeJsonState(id, state);
     }
@@ -183,6 +155,7 @@ public class JsonStateWriter implements IStateWriter {
         }
         if (state.fingerPrint() != successor.fingerPrint()) {
             int id = this.stateGraphPathExtractor.addAction(state, successor);
+            // TODO: determine when action can be null
             this.writeJsonAction(id, state, successor, action);
         }
     }
@@ -232,9 +205,25 @@ public class JsonStateWriter implements IStateWriter {
         }
 
         Tool tool = (Tool) TLCGlobals.mainChecker.tool;
-        Iterable<List<StateGraphPathExtractor.Edge>> paths = this.stateGraphPathExtractor.extractPaths();
+        List<Location> actionLocations = Arrays.stream(tool.getActions())
+                .map(Action::getDeclaration)
+                .distinct()
+                .collect(Collectors.toList());
+
+        Map<Location, UniqueString> actionNames = Arrays.stream(tool.getActions())
+                .collect(Collectors.groupingBy(Action::getDeclaration,
+                        Collectors.reducing(null, Action::getName, (x, y) -> x == null ? y : x)));
+        Map<Location, Long> actionLocCount = Arrays.stream(tool.getActions())
+                .collect(Collectors.groupingBy(Action::getDeclaration, Collectors.counting()));
+
+        MP.printMessage(EC.GENERAL, "Found " + tool.getActions().length + " actions (" + actionLocations.size() + " distinct):");
+        for (Location loc : actionLocations) {
+            MP.printMessage(EC.GENERAL, "  " + actionNames.get(loc) + ": " + actionLocCount.get(loc));
+        }
 
         MP.printMessage(EC.GENERAL, "Path cover JSON exporting started.");
+
+        Iterable<List<StateGraphPathExtractor.Edge>> paths = this.stateGraphPathExtractor.extractPaths();
 
         Path metaFile = this.dir.resolve("meta.json");
         try {

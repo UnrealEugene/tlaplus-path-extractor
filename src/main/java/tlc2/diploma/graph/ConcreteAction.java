@@ -5,7 +5,6 @@ import org.eclipse.collections.impl.list.mutable.FastList;
 import tla2sany.semantic.ExprOrOpArgNode;
 import tla2sany.semantic.FormalParamNode;
 import tla2sany.semantic.OpApplNode;
-import tla2sany.st.Location;
 import tlc2.TLCGlobals;
 import tlc2.tool.Action;
 import tlc2.tool.TLCState;
@@ -14,17 +13,22 @@ import tlc2.value.IValue;
 import tlc2.value.impl.LazyValue;
 import tlc2.value.impl.StringValue;
 
+import java.util.Arrays;
 import java.util.List;
 
 import static tla2sany.semantic.ASTConstants.UserDefinedOpKind;
 
 public class ConcreteAction {
-    private final Location declaration;
+    private final String name;
     private final ImmutableList<IValue> args;
 
-    private ConcreteAction(Location declaration, List<IValue> args) {
-        this.declaration = declaration;
+    private ConcreteAction(String name, List<IValue> args) {
+        this.name = name;
         this.args = new FastList<>(args).toImmutable();
+    }
+
+    public static ConcreteAction from(String name, IValue... args) {
+        return new ConcreteAction(name, Arrays.asList(args));
     }
 
     public static ConcreteAction from(TLCState from, TLCState to, Action action) {
@@ -54,11 +58,11 @@ public class ConcreteAction {
                 }
             }
         }
-        return new ConcreteAction(action.getDeclaration(), args);
+        return new ConcreteAction(action.getName().toString(), args);
     }
 
-    public Location getDeclaration() {
-        return declaration;
+    public String getName() {
+        return name;
     }
 
     public List<IValue> getArgs() {
