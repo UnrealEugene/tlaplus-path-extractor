@@ -8,6 +8,7 @@ import tla2sany.st.Location;
 import tlc2.TLCGlobals;
 import tlc2.diploma.graph.ConcreteAction;
 import tlc2.diploma.graph.StateGraphPathExtractor;
+import tlc2.module.TLCPE;
 import tlc2.output.EC;
 import tlc2.output.MP;
 import tlc2.tool.Action;
@@ -18,7 +19,10 @@ import tlc2.value.IValue;
 import tlc2.value.impl.Value;
 import util.UniqueString;
 
-import java.io.*;
+import java.io.BufferedWriter;
+import java.io.Closeable;
+import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.text.DecimalFormat;
@@ -26,9 +30,7 @@ import java.text.SimpleDateFormat;
 import java.util.List;
 import java.util.*;
 import java.util.function.Consumer;
-import java.util.function.Function;
 import java.util.stream.Collectors;
-import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
 @SuppressWarnings("unused")
@@ -40,7 +42,6 @@ public class JsonStateWriter implements IStateWriter {
     private final StateGraphPathExtractor stateGraphPathExtractor;
     private final JSONSparseArrayWriter[] stateWriters;
     private final JSONSparseArrayWriter[] actionWriters;
-    private final Map<Location, Integer> locToId;
 
     private static final String EXPORT_DIR = System.getProperty(JsonStateWriter.class.getName() + ".dir");
 
@@ -64,7 +65,6 @@ public class JsonStateWriter implements IStateWriter {
             this.stateWriters[i] = new JSONSparseArrayWriter(stateDir.resolve(fileName));
             this.actionWriters[i] = new JSONSparseArrayWriter(actionDir.resolve(fileName));
         }
-        this.locToId = new HashMap<>();
     }
 
     private int getThreadId() {
@@ -93,7 +93,13 @@ public class JsonStateWriter implements IStateWriter {
     }
 
     private void writeJsonAction(int index, TLCState from, TLCState to, Action action) {
-        ConcreteAction concreteAction = ConcreteAction.from(from, to, action);
+        ConcreteAction concreteAction;
+        if (TLCPE.exportedActions.get() != null) {
+            concreteAction = TLCPE.exportedActions.get();
+            TLCPE.exportedActions.set(null);
+        } else {
+            concreteAction = ConcreteAction.from(from, to, action);
+        }
         int threadId = getThreadId();
         this.actionWriters[threadId].write(jsonWriter -> {
             jsonWriter.writeName(Integer.toString(index));
