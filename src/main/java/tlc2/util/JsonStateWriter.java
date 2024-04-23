@@ -81,36 +81,16 @@ public class JsonStateWriter implements IStateWriter {
         this.stateWriters[threadId].write(jsonWriter -> {
             jsonWriter.writeName(Integer.toString(index));
             jsonWriter.writeColon();
-            jsonWriter.startObject();
-            Map<UniqueString, IValue> stateVals = state.getVals();
-            for (Map.Entry<UniqueString, IValue> entry : stateVals.entrySet()) {
-                jsonWriter.writeName(entry.getKey().toString());
-                jsonWriter.writeColon();
-                jsonWriter.writeAny(FastJsonSerializer.serialize(entry.getValue()));
-            }
-            jsonWriter.endObject();
+            ExportUtil.writeState(jsonWriter, state);
         });
     }
 
     private void writeJsonAction(int index, TLCState from, TLCState to, Action action) {
-        ConcreteAction concreteAction;
-        if (TLCPE.exportedActions.get() != null) {
-            concreteAction = TLCPE.exportedActions.get();
-            TLCPE.exportedActions.set(null);
-        } else {
-            concreteAction = ConcreteAction.from(from, to, action);
-        }
         int threadId = getThreadId();
         this.actionWriters[threadId].write(jsonWriter -> {
             jsonWriter.writeName(Integer.toString(index));
             jsonWriter.writeColon();
-            jsonWriter.startArray();
-            jsonWriter.writeString(concreteAction.getName());
-            for (IValue val : concreteAction.getArgs()) {
-                jsonWriter.writeComma();
-                jsonWriter.writeAny(FastJsonSerializer.serialize(val));
-            }
-            jsonWriter.endArray();
+            ExportUtil.writeAction(jsonWriter, from, to, action);
         });
     }
 
@@ -290,15 +270,6 @@ public class JsonStateWriter implements IStateWriter {
             l = r;
         }
 
-        Vect<Object> constVect = tool.getModelConfig().getConstants();
-        Object[] constArray = new Vect[constVect.size()];
-        constVect.copyInto(constArray);
-        Map<String, Value> constMap = new HashMap<>();
-        for (Object obj : constArray) {
-            Vect<Object> vect = (Vect<Object>) obj;
-            constMap.put((String) vect.elementAt(0), (Value) vect.elementAt(1));
-        }
-
         // write meta file
         try (BufferedWriter writer = Files.newBufferedWriter(metaFile);
              JSONWriter jsonWriter = JSONWriter.ofUTF8()) {
@@ -308,20 +279,9 @@ public class JsonStateWriter implements IStateWriter {
             jsonWriter.writeColon();
             jsonWriter.writeString(now());
 
-            jsonWriter.writeName("tla_module");
-            jsonWriter.writeColon();
-            String rootFile = TLCGlobals.mainChecker.tool.getRootFile();
-            jsonWriter.writeString(Path.of(rootFile).getFileName().toString().replaceAll(".tla$", ""));
+            ExportUtil.writeTlaModule(jsonWriter);
 
-            jsonWriter.writeName("tla_constants");
-            jsonWriter.writeColon();
-            jsonWriter.startObject();
-            for (Map.Entry<String, Value> entry : constMap.entrySet()) {
-                jsonWriter.writeName(entry.getKey());
-                jsonWriter.writeColon();
-                jsonWriter.writeAny(FastJsonSerializer.serialize(entry.getValue()));
-            }
-            jsonWriter.endObject();
+            ExportUtil.writeTlaConstants(jsonWriter);
 
             ImmutableList<String> fileNames = IntInterval.oneTo(threads)
                     .collect(i -> String.format(FILE_NAME_FORMAT, i));

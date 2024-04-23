@@ -1,2 +1,5 @@
 /.idea/
+/*.iml
+/target/*
+/out/*
 /lib/tla2tools.jar
